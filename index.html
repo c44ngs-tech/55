@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>WolfBrigade - 2D Platform Adventure</title>
+    <style>
+        :root {
+            --bg-midnight: #0a0e1a;
+            --panel-bg: rgba(18, 24, 42, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --accent-icy: #38bdf8;
+            --accent-violet: #818cf8;
+            --accent-moon: #f8fafc;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --danger: #f43f5e;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-midnight);
+            color: var(--text-main);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1b263b 0%, #0a0e1a 100%);
+        }
+
+        canvas {
+            display: block;
+            background: #060913;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.15);
+        }
+
+        /* Glassmorphism UI Panels */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Screens & Overlays */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+            padding: 20px;
+        }
+
+        .screen.hidden {
+            display: none !important;
+        }
+
+        /* Typography & Logo */
+        .game-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #f8fafc 0%, #38bdf8 50%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .game-subtitle {
+            font-size: 1rem;
+            color: var(--text-muted);
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 280px;
+            max-width: 90vw;
+        }
+
+        .btn {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: var(--text-main);
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(8px);
+        }
+
+        .btn:hover {
+            background: rgba(56, 189, 248, 0.3);
+            border-color: var(--accent-icy);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.25);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-icy), var(--accent-violet));
+            border: none;
+            color: #0a0e1a;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            background: linear-gradient(135deg, var(--accent-icy), var(--accent-violet));
+        }
+
+        /* Hud In-Game */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .hud-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .health-bar-container {
+            width: 120px;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            width: 100%;
+            transition: width 0.2s ease;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 160px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            pointer-events: auto;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transition: background 0.1s;
+        }
+
+        .touch-btn:active {
+            background: rgba(56, 189, 248, 0.4);
+        }
+
+        .dpad-container {
+            display: flex;
+            gap: 15px;
+            pointer-events: none;
+        }
+
+        .dpad-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            pointer-events: auto;
+        }
+
+        .action-container {
+            display: flex;
+            gap: 15px;
+            pointer-events: none;
+        }
+
+        .action-btn {
+            width: 65px;
+            height: 65px;
+            pointer-events: auto;
+        }
+
+        .action-btn.jump { width: 75px; height: 75px; }
+
+        /* Character Select Grid */
+        .char-grid {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .char-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 20px;
+            width: 220px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .char-card.selected {
+            border-color: var(--accent-icy);
+            background: rgba(56, 189, 248, 0.1);
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+        }
+
+        .char-card h3 {
+            margin-bottom: 8px;
+            font-size: 1.3rem;
+        }
+
+        .char-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Modal Overlay Content */
+        .modal-box {
+            width: 500px;
+            max-width: 90vw;
+            max-height: 80vh;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: var(--accent-icy);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .close-btn:hover { color: var(--text-main); }
+
+        /* Helpers */
+        .text-accent { color: var(--accent-icy); }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        
+        input[type="text"] {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--panel-border);
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: var(--accent-icy);
+        }
+
+        @media (max-width: 768px) {
+            .char-grid { flex-direction: column; gap: 10px; }
+            .char-card { width: 100%; display: flex; align-items: center; text-align: left; gap: 15px; padding: 15px; }
+            .game-title { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Canvas Utama Game -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD In-Game -->
+    <div id="hud" class="hidden">
+        <div class="hud-group">
+            <div class="hud-card">
+                <span>HP</span>
+                <div class="health-bar-container">
+                    <div id="healthFill" class="health-bar-fill"></div>
+                </div>
+            </div>
+            <div class="hud-card">
+                <span>💎 <span id="hudCoins">0</span></span>
+            </div>
+        </div>
+        <div class="hud-group">
+            <div class="hud-card">
+                <span>⭐ Level <span id="hudLevel">1</span></span>
+            </div>
+            <div class="hud-card" style="pointer-events: auto; cursor: pointer;" onclick="togglePause()">
+                <span>⏸️ Pause</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kontrol Mobile -->
+    <div id="mobile-controls">
+        <div class="dpad-container">
+            <button class="touch-btn dpad-btn" id="btnLeft">⬅️</button>
+            <button class="touch-btn dpad-btn" id="btnRight">➡️</button>
+        </div>
+        <div class="action-container">
+            <button class="touch-btn action-btn" id="btnDash">⚡</button>
+            <button class="touch-btn action-btn" id="btnAttack">⚔️</button>
+            <button class="touch-btn action-btn jump" id="btnJump">⬆️</button>
+        </div>
+    </div>
+
+    <!-- Menu Utama -->
+    <div id="screen-menu" class="screen glass-panel" style="background: rgba(10, 14, 26, 0.85);">
+        <div class="game-title">WOLFBRIGADE</div>
+        <div class="game-subtitle">Moon & Shadow Chronicles</div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="startGame()">▶️ Mainkan Game</button>
+            <button class="btn" onclick="openScreen('screen-char')">🐺 Pilih Karakter</button>
+            <button class="btn" onclick="openScreen('screen-profile')">👤 Profil Pemain</button>
+            <button class="btn" onclick="openScreen('screen-achieve')">🏆 Pencapaian</button>
+            <button class="btn" onclick="openScreen('screen-settings')">⚙️ Pengaturan</button>
+        </div>
+    </div>
+
+    <!-- Pemilihan Karakter -->
+    <div id="screen-char" class="screen glass-panel hidden">
+        <h2>PILIH KARAKTER</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Tentukan takdir petualanganmu</p>
+        <div class="char-grid">
+            <div class="char-card selected" id="card-luna" onclick="selectCharacter('luna')">
+                <h3>Luna</h3>
+                <p><b>The Moon Wolf</b><br>Serigala betina perak. Lincah dengan Double Jump & Moon Dash.</p>
+            </div>
+            <div class="char-card" id="card-kai" onclick="selectCharacter('kai')">
+                <h3>Kai</h3>
+                <p><b>The Shadow Wolf</b><br>Serigala jantan hitam-abu. Kuat dengan Shadow Dash & Serangan Cepat.</p>
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="openScreen('screen-menu')">Konfirmasi & Kembali</button>
+    </div>
+
+    <!-- Profil Pemain -->
+    <div id="screen-profile" class="screen glass-panel hidden">
+        <div class="modal-box glass-panel">
+            <div class="modal-header">
+                <h2>Profil Pemain</h2>
+                <button class="close-btn" onclick="openScreen('screen-menu')">&times;</button>
+            </div>
+            <div class="flex-row" style="flex-direction: column; align-items: stretch; gap: 15px;">
+                <label>Nickname Pemain:</label>
+                <input type="text" id="inputNickname" value="AlphaWolf" placeholder="Masukkan nickname...">
+                
+                <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <div>Level: <span id="profileLevel" class="text-accent">1</span></div>
+                    <div>Total XP: <span id="profileXp" class="text-accent">0</span></div>
+                    <div>Total Koin: <span id="profileCoins" class="text-accent">0</span> 💎</div>
+                    <div>Karakter Favorit: <span id="profileChar" class="text-accent">Luna</span></div>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveProfileData()">Simpan Profil</button>
+                <button class="btn" style="border-color: var(--danger); color: var(--danger);" onclick="resetProgress()">Reset Progres</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievement / Pencapaian -->
+    <div id="screen-achieve" class="screen glass-panel hidden">
+        <div class="modal-box glass-panel">
+            <div class="modal-header">
+                <h2>Pencapaian</h2>
+                <button class="close-btn" onclick="openScreen('screen-menu')">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="glass-panel" style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><b>First Step</b><br><small style="color:var(--text-muted)">Mulai petualangan pertama.</small></div>
+                    <span id="ach-1" style="color: var(--success);">✅ Selesai</span>
+                </div>
+                <div class="glass-panel" style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><b>Coin Collector</b><br><small style="color:var(--text-muted)">Kumpulkan 50 koin kristal.</small></div>
+                    <span id="ach-2" style="color: var(--text-muted);">Belum</span>
+                </div>
+                <div class="glass-panel" style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><b>Monster Slayer</b><br><small style="color:var(--text-muted)">Kalahkan Boss Penjaga Hutan.</small></div>
+                    <span id="ach-3" style="color: var(--text-muted);">Belum</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pengaturan -->
+    <div id="screen-settings" class="screen glass-panel hidden">
+        <div class="modal-box glass-panel">
+            <div class="modal-header">
+                <h2>Pengaturan</h2>
+                <button class="close-btn" onclick="openScreen('screen-menu')">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="flex-row" style="justify-content: space-between;">
+                    <span>Musik Latar</span>
+                    <input type="checkbox" id="checkMusic" checked onchange="toggleAudioSetting()">
+                </div>
+                <div class="flex-row" style="justify-content: space-between;">
+                    <span>Efek Suara (SFX)</span>
+                    <input type="checkbox" id="checkSfx" checked>
+                </div>
+                <div class="flex-row" style="justify-content: space-between;">
+                    <span>Mode Layar Penuh</span>
+                    <button class="btn" style="padding: 8px 16px;" onclick="toggleFullScreen()">Fullscreen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="screen-pause" class="screen glass-panel hidden" style="background: rgba(10, 14, 26, 0.85);">
+        <h2>GAME DI-PAUSE</h2>
+        <div class="btn-group" style="margin-top: 20px;">
+            <button class="btn btn-primary" onclick="togglePause()">Lanjutkan</button>
+            <button class="btn" onclick="restartGame()">Mulai Ulang</button>
+            <button class="btn" onclick="returnToMenu()">Menu Utama</button>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="screen-gameover" class="screen glass-panel hidden" style="background: rgba(10, 14, 26, 0.9);">
+        <h2 style="color: var(--danger); font-size: 2.5rem; margin-bottom: 10px;">GAME OVER</h2>
+        <p style="color: var(--text-muted); margin-bottom: 30px;">Semangat! Coba taklukkan rintangan kembali.</p>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="restartGame()">Coba Lagi</button>
+            <button class="btn" onclick="returnToMenu()">Menu Utama</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* --- DATA PEMAIN & LOCAL STORAGE --- */
+    let playerData = {
+        nickname: "AlphaWolf",
+        character: "luna",
+        level: 1,
+        xp: 0,
+        coins: 0,
+        highScore: 0
+    };
+
+    function loadUserData() {
+        const saved = localStorage.getItem('wolf_player');
+        if (saved) {
+            try { playerData = JSON.parse(saved); } catch(e){}
+        }
+        document.getElementById('inputNickname').value = playerData.nickname;
+        updateProfileUI();
+        updateCharacterSelectionUI();
+    }
+
+    function saveUserData() {
+        localStorage.setItem('wolf_player', JSON.stringify(playerData));
+    }
+
+    function saveProfileData() {
+        const nick = document.getElementById('inputNickname').value.trim();
+        if(nick) playerData.nickname = nick;
+        saveUserData();
+        alert('Profil berhasil disimpan!');
+        openScreen('screen-menu');
+    }
+
+    function updateProfileUI() {
+        document.getElementById('profileLevel').innerText = playerData.level;
+        document.getElementById('profileXp').innerText = playerData.xp;
+        document.getElementById('profileCoins').innerText = playerData.coins;
+        document.getElementById('profileChar').innerText = playerData.character === 'luna' ? 'Luna (Moon Wolf)' : 'Kai (Shadow Wolf)';
+    }
+
+    function resetProgress() {
+        if(confirm('Yakin ingin mereset seluruh progres game?')) {
+            localStorage.removeItem('wolf_player');
+            playerData = { nickname: "AlphaWolf", character: "luna", level: 1, xp: 0, coins: 0, highScore: 0 };
+            loadUserData();
+            alert('Progres telah direset.');
+            openScreen('screen-menu');
+        }
+    }
+
+    function selectCharacter(char) {
+        playerData.character = char;
+        updateCharacterSelectionUI();
+        saveUserData();
+    }
+
+    function updateCharacterSelectionUI() {
+        document.getElementById('card-luna').classList.toggle('selected', playerData.character === 'luna');
+        document.getElementById('card-kai').classList.toggle('selected', playerData.character === 'kai');
+    }
+
+    loadUserData();
+
+    /* --- NAVIGASI LAYAR --- */
+    function openScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById(screenId).classList.remove('hidden');
+        if(screenId === 'screen-menu') {
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('mobile-controls').style.display = 'none';
+            gameState = 'MENU';
+        }
+    }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            if (document.exitFullscreen) { document.exitFullscreen(); }
+        }
+    }
+
+    /* --- ENGINE GAME & SETUP CANVAS --- */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let gameState = 'MENU'; // MENU, PLAYING, PAUSED, GAMEOVER
+    let lastTime = 0;
+
+    // Input Controller
+    const keys = {};
+    window.addEventListener('keydown', e => {
+        keys[e.code] = true;
+        if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+            if(gameState === 'PLAYING') triggerJump();
+        }
+        if(e.code === 'KeyJ' && gameState === 'PLAYING') triggerAttack();
+        if(e.code === 'ShiftLeft' && gameState === 'PLAYING') triggerDash();
+        if(e.code === 'Escape') {
+            if(gameState === 'PLAYING' || gameState === 'PAUSED') togglePause();
+        }
+    });
+    window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+    // Mobile Touch Controllers
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
+    if(isMobile) {
+        document.getElementById('mobile-controls').style.display = 'flex';
+    }
+
+    let touchInput = { left: false, right: false };
+    function bindTouch(id, actionDown, actionUp) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener('touchstart', e => { e.preventDefault(); actionDown(); });
+        el.addEventListener('touchend', e => { e.preventDefault(); actionUp(); });
+    }
+    bindTouch('btnLeft', () => touchInput.left = true, () => touchInput.left = false);
+    bindTouch('btnRight', () => touchInput.right = true, () => touchInput.right = false);
+    bindTouch('btnJump', () => triggerJump(), () => {});
+    bindTouch('btnAttack', () => triggerAttack(), () => {});
+    bindTouch('btnDash', () => triggerDash(), () => {});
+
+    /* --- OBJEK GAME & DUNIA --- */
+    let camera = { x: 0, y: 0 };
+    let player = {
+        x: 100, y: 300, width: 48, height: 64,
+        vx: 0, vy: 0, speed: 5, jumpForce: -12,
+        isGrounded: false, canDoubleJump: true,
+        hp: 100, maxHp: 100, facing: 1,
+        isAttacking: false, attackTimer: 0,
+        isDashing: false, dashTimer: 0
+    };
+
+    let world = {
+        width: 4000,
+        gravity: 0.5,
+        platforms: [],
+        coins: [],
+        enemies: [],
+        boss: null,
+        particles: []
+    };
+
+    function initLevel() {
+        player.x = 100; player.y = 200; player.vx = 0; player.vy = 0; player.hp = 100;
+        camera.x = 0;
+
+        // Buat platform peta
+        world.platforms = [
+            { x: 0, y: 500, w: 1200, h: 100 },
+            { x: 1350, y: 440, w: 400, h: 160 },
+            { x: 1900, y: 380, w: 500, h: 220 },
+            { x: 2500, y: 500, w: 1500, h: 100 },
+        ];
+
+        // Buat koin
+        world.coins = [];
+        for(let i = 300; i < 3500; i += 180) {
+            world.coins.push({ x: i, y: 350 + Math.sin(i)*60, collected: false });
+        }
+
+        // Buat musuh
+        world.enemies = [
+            { x: 600, y: 440, w: 40, h: 40, vx: 2, minX: 500, maxX: 900, hp: 30, alive: true },
+            { x: 1500, y: 380, w: 40, h: 40, vx: -2, minX: 1400, maxX: 1700, hp: 30, alive: true },
+            { x: 2800, y: 440, w: 40, h: 40, vx: 3, minX: 2600, maxX: 3200, hp: 50, alive: true }
+        ];
+
+        // Boss di ujung level
+        world.boss = { x: 3600, y: 400, w: 80, h: 90, vx: 1.5, minX: 3400, maxX: 3800, hp: 150, maxHp: 150, alive: true };
+        world.particles = [];
+    }
+
+    function startGame() {
+        document.getElementById('screen-menu').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        if(isMobile) document.getElementById('mobile-controls').style.display = 'flex';
+        initLevel();
+        gameState = 'PLAYING';
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function togglePause() {
+        if(gameState === 'PLAYING') {
+            gameState = 'PAUSED';
+            document.getElementById('screen-pause').classList.remove('hidden');
+        } else if(gameState === 'PAUSED') {
+            gameState = 'PLAYING';
+            document.getElementById('screen-pause').classList.add('hidden');
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    function restartGame() {
+        document.getElementById('screen-pause').classList.add('hidden');
+        document.getElementById('screen-gameover').classList.add('hidden');
+        initLevel();
+        gameState = 'PLAYING';
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function returnToMenu() {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById('screen-menu').classList.remove('hidden');
+        document.getElementById('hud').classList.add('hidden');
+        document.getElementById('mobile-controls').style.display = 'none';
+        gameState = 'MENU';
+    }
+
+    function triggerJump() {
+        if(player.isGrounded) {
+            player.vy = player.jumpForce;
+            player.isGrounded = false;
+            player.canDoubleJump = true;
+            spawnParticles(player.x, player.y + player.height, '#38bdf8', 5);
+        } else if(player.canDoubleJump) {
+            player.vy = player.jumpForce * 0.9;
+            player.canDoubleJump = false;
+            spawnParticles(player.x, player.y, playerData.character === 'luna' ? '#f8fafc' : '#818cf8', 8);
+        }
+    }
+
+    function triggerAttack() {
+        if(player.isAttacking) return;
+        player.isAttacking = true;
+        player.attackTimer = 15; // frame durasi serangan
+        
+        // Cek musuh kena pukul
+        let attackBox = { x: player.facing > 0 ? player.x + player.width : player.x - 50, y: player.y, w: 50, h: player.height };
+        world.enemies.forEach(en => {
+            if(en.alive && checkCollision(attackBox, en)) {
+                en.hp -= 30;
+                if(en.hp <= 0) en.alive = false;
+                spawnParticles(en.x, en.y, '#f43f5e', 10);
+            }
+        });
+
+        if(world.boss && world.boss.alive && checkCollision(attackBox, world.boss)) {
+            world.boss.hp -= 20;
+            if(world.boss.hp <= 0) world.boss.alive = false;
+            spawnParticles(world.boss.x, world.boss.y, '#f43f5e', 15);
+        }
+    }
+
+    function triggerDash() {
+        if(player.isDashing) return;
+        player.isDashing = true;
+        player.dashTimer = 12;
+        player.vx = player.facing * 14;
+    }
+
+    function spawnParticles(x, y, color, count) {
+        for(let i=0; i<count; i++) {
+            world.particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                alpha: 1, color: color, size: Math.random() * 4 + 2
+            });
+        }
+    }
+
+    function checkCollision(r1, r2) {
+        return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+    }
+
+    /* --- GAME LOOP UTAMA --- */
+    function gameLoop(timestamp) {
+        if(gameState !== 'PLAYING') return;
+
+        let dt = (timestamp - lastTime) / 1000;
+        if(dt > 0.1) dt = 0.1;
+        lastTime = timestamp;
+
+        update(dt);
+        render();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update(dt) {
+        // Kontrol Pergerakan
+        let moveDir = 0;
+        if(keys['ArrowLeft'] || keys['KeyA'] || touchInput.left) moveDir = -1;
+        if(keys['ArrowRight'] || keys['KeyD'] || touchInput.right) moveDir = 1;
+
+        if(!player.isDashing) {
+            player.vx = moveDir * player.speed;
+            if(moveDir !== 0) player.facing = moveDir;
+        } else {
+            player.dashTimer--;
+            if(player.dashTimer <= 0) player.isDashing = false;
+        }
+
+        // Serangan timer
+        if(player.isAttacking) {
+            player.attackTimer--;
+            if(player.attackTimer <= 0) player.isAttacking = false;
+        }
+
+        // Fisika & Gravitasi
+        player.vy += world.gravity;
+        player.x += player.vx;
+        player.y += player.vy;
+
+        // Collision Platform
+        player.isGrounded = false;
+        world.platforms.forEach(plat => {
+            if(player.x + player.width > plat.x && player.x < plat.x + plat.w &&
+               player.y + player.height >= plat.y && player.y + player.height - player.vy <= plat.y + 10) {
+                player.y = plat.y - player.height;
+                player.vy = 0;
+                player.isGrounded = true;
+                player.canDoubleJump = true;
+            }
+        });
+
+        // Batas Peta & Jurang
+        if(player.y > canvas.height + 200) {
+            player.hp = 0; // Jatuh ke jurang
+        }
+
+        // Update Musuh
+        world.enemies.forEach(en => {
+            if(!en.alive) return;
+            en.x += en.vx;
+            if(en.x < en.minX || en.x > en.maxX) en.vx *= -1;
+
+            // Damage player
+            if(checkCollision(player, en)) {
+                player.hp -= 0.5;
+            }
+        });
+
+        // Update Boss
+        if(world.boss && world.boss.alive) {
+            world.boss.x += world.boss.vx;
+            if(world.boss.x < world.boss.minX || world.boss.x > world.boss.maxX) world.boss.vx *= -1;
+            if(checkCollision(player, world.boss)) {
+                player.hp -= 1;
+            }
+        }
+
+        // Koleksi Koin
+        world.coins.forEach(c => {
+            if(!c.collected && checkCollision(player, { x: c.x, y: c.y, w: 20, h: 20 })) {
+                c.collected = true;
+                playerData.coins += 1;
+                playerData.xp += 10;
+                saveUserData();
+            }
+        });
+
+        // Partikel
+        world.particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.alpha -= 0.03;
+        });
+        world.particles = world.particles.filter(p => p.alpha > 0);
+
+        // Kamera Mengikuti Karakter
+        camera.x = player.x - canvas.width / 3;
+        if(camera.x < 0) camera.x = 0;
+        if(camera.x > world.width - canvas.width) camera.x = world.width - canvas.width;
+
+        // Update HUD DOM
+        document.getElementById('healthFill').style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
+        document.getElementById('hudCoins').innerText = playerData.coins;
+
+        // Cek Game Over
+        if(player.hp <= 0) {
+            gameState = 'GAMEOVER';
+            document.getElementById('screen-gameover').classList.remove('hidden');
+        }
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(-camera.x, 0);
+
+        // Background Parallax / Langit Malam & Bulan
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(camera.x, 0, canvas.width, canvas.height);
+
+        // Bulan Bercahaya
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.15)';
+        ctx.beginPath();
+        ctx.arc(camera.x + canvas.width - 150, 120, 70, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Render Platform
+        world.platforms.forEach(plat => {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(plat.x, plat.y, plat.w, 4); // Garis atas neon
+        });
+
+        // Render Koin
+        world.coins.forEach(c => {
+            if(!c.collected) {
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.arc(c.x + 10, c.y + 10, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ca8a04';
+                ctx.stroke();
+            }
+        });
+
+        // Render Musuh
+        world.enemies.forEach(en => {
+            if(!en.alive) return;
+            ctx.fillStyle = '#f43f5e';
+            ctx.fillRect(en.x, en.y, en.w, en.h);
+            // Health Bar Musuh
+            ctx.fillStyle = '#000';
+            ctx.fillRect(en.x, en.y - 10, en.w, 5);
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(en.x, en.y - 10, en.w * (en.hp / 30), 5);
+        });
+
+        // Render Boss
+        if(world.boss && world.boss.alive) {
+            ctx.fillStyle = '#8b5cf6';
+            ctx.fillRect(world.boss.x, world.boss.y, world.boss.w, world.boss.h);
+            // Boss HP
+            ctx.fillStyle = '#000';
+            ctx.fillRect(world.boss.x, world.boss.y - 15, world.boss.w, 8);
+            ctx.fillStyle = '#f43f5e';
+            ctx.fillRect(world.boss.x, world.boss.y - 15, world.boss.w * (world.boss.hp / world.boss.maxHp), 8);
+        }
+
+        // Render Karakter (Luna / Kai - Stylized Custom Canvas Art)
+        ctx.fillStyle = playerData.character === 'luna' ? '#f8fafc' : '#334155';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        
+        // Mata bercahaya & armor serigala
+        ctx.fillStyle = '#38bdf8';
+        let eyeX = player.facing > 0 ? player.x + 32 : player.x + 10;
+        ctx.fillRect(eyeX, player.y + 12, 6, 6);
+
+        // Efek Serangan
+        if(player.isAttacking) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+            let atkX = player.facing > 0 ? player.x + player.width : player.x - 40;
+            ctx.fillRect(atkX, player.y + 15, 40, 30);
+        }
+
+        // Render Partikel
+        world.particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        });
+
+        ctx.restore();
+    }
+</script>
+
+</body>
+</html>
